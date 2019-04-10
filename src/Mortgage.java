@@ -1,3 +1,5 @@
+import java.time.LocalDate;
+
 public class Mortgage {
 
     double initialPrincipal;
@@ -15,13 +17,36 @@ public class Mortgage {
         this.mthIntPct = interestRate/100/12;
     }
 
-
-
+    public LocalDate getDate() {
+        return LocalDate.now();
+    }
 
     public double monthlyPayment(){
 
         return (mthIntPct/(1-(Math.pow((1+mthIntPct),-remainingMonths)))*balance);
     }
+
+    public void recalculateMonthsRegularOverpayment(double overpayment){
+
+        //return new Double(Math.ceil(-top/bottom)).intValue();
+
+        LocalDate futureDate = getDate().plusMonths(monthsRemaining(overpayment));
+        System.out.println("You will finish the mortgage on " + futureDate + ", " + -monthsSaved(overpayment) + " months earlier than before");
+    }
+
+    public int monthsRemaining(){
+        return monthsRemaining(0);
+    }
+
+    public int monthsRemaining(double overpayment){
+        double top = Math.log(-((mthIntPct*this.balance/(this.monthlyPayment()+overpayment))-1));
+        double bottom = Math.log(1+mthIntPct);
+        return new Double(Math.ceil(-top/bottom)).intValue();
+    }
+
+    public int monthsSaved(double overpayment){
+        return monthsRemaining() - monthsRemaining(overpayment);
+            }
 
 
     public int recalculateMonths(double overpayment){
