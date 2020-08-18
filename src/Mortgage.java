@@ -4,18 +4,21 @@ public class Mortgage {
 
     double initialPrincipal;
     double interestRate;
+    double monthlyPayment;
     double balance;
     int remainingMonths;
     double mthIntPct;
-    OverpaymentAction action = OverpaymentAction.REDUCE_TERM;
+    OverpaymentAction action;
 
 
-    public Mortgage(double initialPrincipal, double interestRate, double balance, int remainingMonths) {
+    public Mortgage(double initialPrincipal, double interestRate, double balance, int remainingMonths, OverpaymentAction action) {
         this.initialPrincipal = initialPrincipal;
         this.interestRate = interestRate;
         this.balance = balance;
         this.remainingMonths = remainingMonths;
         this.mthIntPct = interestRate/100/12;
+        this.monthlyPayment = monthlyPayment();
+        this.action = action;
     }
 
     public LocalDate getDate() {
@@ -28,9 +31,6 @@ public class Mortgage {
     }
 
     public void recalculateMonthsRegularOverpayment(double overpayment){
-
-        //return new Double(Math.ceil(-top/bottom)).intValue();
-
         LocalDate futureDate = getDate().plusMonths(monthsRemaining(overpayment));
         System.out.println("You will finish the mortgage on " + futureDate + ", " + monthsSaved(overpayment) + " months earlier than before");
     }
@@ -39,7 +39,7 @@ public class Mortgage {
         return monthsRemaining(0);
     }
 
-    public int monthsRemaining(double overpayment){
+    private int monthsRemaining(double overpayment){
         double top = Math.log(-((mthIntPct*this.balance/(this.monthlyPayment()+overpayment))-1));
         double bottom = Math.log(1+mthIntPct);
         return new Double(Math.ceil(-top/bottom)).intValue();
@@ -50,14 +50,27 @@ public class Mortgage {
             }
 
 
-    public int recalculateMonths(double overpayment){
-        double newBalance = balance - overpayment;
-
-        double top = Math.log(-((mthIntPct*newBalance/this.monthlyPayment())-1));
+    public void recalculateMonths(){
+        double top = Math.log(-((mthIntPct*balance/this.monthlyPayment)-1));
         double bottom = Math.log(1+mthIntPct);
+        this.remainingMonths = new Double(Math.ceil(-top/bottom)).intValue();
+    }
 
-        return new Double(Math.ceil(-top/bottom)).intValue();
+    public double totalToPayOverLifetime() {
+        return this.monthlyPayment * this.remainingMonths;
+    }
 
+    public void makeOneOffPayment(double payment) {
+        this.balance -= payment;
+        recalculate();
+    }
+
+    public void recalculate() {
+        if (this.action == OverpaymentAction.REDUCE_PAYMENT) {
+            recalculateMonthlyPayment();
+        } else {
+            recalculateMonths();
+        }
     }
 
 
@@ -66,24 +79,20 @@ public class Mortgage {
     }
 
     public void makeMonthlyPayment(double overpayment) {
-        double totalPayment = monthlyPayment() + overpayment;
+        double totalPayment = monthlyPayment + overpayment;
         if (balance > totalPayment) {
             balance = balance - totalPayment;
+            remainingMonths--;
         }
         else balance = 0;
 
-        if (overpayment > 0) {
-            if (action == OverpaymentAction.REDUCE_PAYMENT){
-                remainingMonths--;
-                recalculateMonthlyPayment(overpayment);
-
-            }
-            else {recalculateMonths(overpayment);
-                //remainingMonths--;
-                }
+        if (balance == 0) {
+            remainingMonths = 0;
+            return;
         }
-        else {
-            remainingMonths--;
+
+        if (overpayment > 0) {
+            recalculate();
         }
 
     }
@@ -93,10 +102,8 @@ public class Mortgage {
         makeMonthlyPayment(overpayment);
     }
 
-    public double recalculateMonthlyPayment(double overpayment) {
-        double newBalance = balance - overpayment;
-        Mortgage newMortgage = new Mortgage(this.initialPrincipal,this.interestRate,newBalance,this.remainingMonths-1);
-        return newMortgage.monthlyPayment();
+    public void recalculateMonthlyPayment() {
+        this.monthlyPayment = monthlyPayment();
     }
 
 }
